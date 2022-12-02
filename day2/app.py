@@ -1,7 +1,8 @@
 def run():
-    f = open("input.txt", "r")
+    f = open("day2/input.txt", "r")
     lines = f.readlines()
     score = 0
+    scoreAlwaysScissor = 0
     for line in lines:
         op_hand = getHand(line[0])
         my_hand = getHand(line[2])
@@ -9,7 +10,7 @@ def run():
     print("Final score part 1: "+str(score))
 
 def run2():
-    f = open("input.txt", "r")
+    f = open("day2/input.txt", "r")
     lines = f.readlines()
     score = 0
     for line in lines:
