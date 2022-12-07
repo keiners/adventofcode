@@ -2,7 +2,6 @@ def run():
     f = open("day2/input.txt", "r")
     lines = f.readlines()
     score = 0
-    scoreAlwaysScissor = 0
     for line in lines:
         op_hand = getHand(line[0])
         my_hand = getHand(line[2])
@@ -15,7 +14,7 @@ def run2():
     score = 0
     for line in lines:
         op_hand = getHand(line[0])
-        my_hand = getHand(getMyHand(line[0], line[2]))
+        my_hand = getHandFromResult(line[0], line[2])
         score += getResult(op_hand, my_hand) + my_hand
     print("Final score part 2: "+str(score))
 
@@ -46,23 +45,25 @@ def getHand(input):
     elif input == "C" or input == "Z":
         return 3
     
-def getMyHand(op_hand, result):
+def getHandFromResult(op_hand, result):
+    myHand = ""
     if result == "Y":
-        return op_hand
+        myHand = op_hand
     elif result == "X":
         if op_hand == "A":
-            return "C"
+            myHand = "C"
         elif op_hand == "B":
-            return "A"
+            myHand = "A"
         else:
-            return "B"
+            myHand = "B"
     elif result == "Z":
         if op_hand == "A":
-            return "B"
+            myHand = "B"
         elif op_hand == "B":
-            return "C"
+            myHand = "C"
         else:
-            return "A"
+            myHand = "A"
+    return getHand(myHand)
  
 run()
 run2()
