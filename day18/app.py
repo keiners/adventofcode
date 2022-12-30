@@ -1,72 +1,96 @@
-def run():
-    fileName = "day18/input.txt"
+import queue
+def run(test=False):
+    fileName = "day18/input.txt" if not test else "day18/test_input.txt"
     f = open(fileName, "r")
     lines = [line.replace("\n", "") for line in f.readlines()]
     
     cubes = []
+    grid_length = 0
     for line in lines:
-        x,y,z = line.split(sep=",")
-        cubes.append(Cube(x,y,z))
-
-    grid_length = int(max([c.max() for c in cubes]))+2
-    graph = [[[False for z in range(grid_length)] for y in range(grid_length)] for x in range(grid_length)]
+        position = [int(i) for i in line.split(sep=",")]
+        if max(position) > grid_length:
+            grid_length = max(position)
+        cubes.append(Cube(position[0],position[1],position[2]))
+    grid_length += 1
     
+    lava = [[[False for z in range(grid_length)] for y in range(grid_length)] for x in range(grid_length)]
     for c in cubes:
-        graph[c.x][c.y][c.z] = True
+        lava[c.x][c.y][c.z] = True
     
-    counter = 0
+    answer_1 = 0
+    c: Cube
     for c in cubes:
-        start_count_1 = counter
         x,y,z = [c.x,c.y,c.z]
         for d in [-1, 1]:
-            if not graph[x+d][y][z]:
-                counter += 1
-            if not graph[x][y+d][z]:
-                counter += 1
-            if not graph[x][y][z+d]:
-                counter += 1
+            if not is_lava(lava,x+d,y,z):
+                answer_1 += 1
+            if not is_lava(lava,x,y+d,z):
+                answer_1 += 1
+            if not is_lava(lava,x,y,z+d):
+                answer_1 += 1
     
-    print("Answer part 1: " + str(counter))
+    if not test: print(f"Answer part 1: {answer_1}")
     
-    counter2 = 0
+    # BFS from edge of graph to map all air pockets
+    surface = find_surface(lava)
+    
+    answer_2 = 0
+    c: Cube
     for c in cubes:
-        break
-        # edge_nodes = find_edge_nodes(cube, max)
-        # for each edge_node:
-        #   check all 6(or 5) directions
-        #   if direction found with no True
-        #       counter2++
-        x2,y2,z2 = [c.x,c.y,c.z]
-        x_up = [graph[d][y2][z2] for d in range(x2+1, len(graph))]
-        x_down = [graph[d][y2][z2] for d in range(0, x2)]
-        if True not in x_up:
-            counter2 += 1
-        if True not in x_down:
-            counter2 += 1
-            
-        y_up = [graph[x2][d][z2] for d in range(y2+1, len(graph))]
-        y_down = [graph[x2][d][z2] for d in range(0, y2)]
-        if True not in y_up:
-            counter2 += 1
-        if True not in y_down:
-            counter2 += 1
-            
-        z_up = [graph[x2][y2][d] for d in range(z2+1, len(graph))]
-        z_down = [graph[x2][y2][d] for d in range(0, z2)]
-        if True not in z_up:
-            counter2 += 1
-        if True not in z_down:
-            counter2 += 1
-            
+        adjacent_cubes = c.get_adjacent_positions()
+        for cube in adjacent_cubes:
+            x,y,z = cube
+            if any(i not in range(0,grid_length) for i in [x,y,z]):
+                # if cube is outside graph => surface
+                answer_2 += 1
+            elif surface[x][y][z]:
+                answer_2 += 1
+    
+    if not test: print(f"Answer part 2: {answer_2}")
+    
+    return answer_1, answer_2
 
-    print("Answer part 2: " + str(counter2)) #assert==58
+def is_lava(lava, x, y, z):
+    if any(i not in range(0,len(lava)) for i in [x,y,z]):
+        return False
+    else: return lava[x][y][z]
+
+def find_surface(lava):
+    """BFS from all outermost non-lava cubes in the graph, visiting every adjacent non-lava cube"""
+    grid_length = len(lava)
+    surface = [[[False for z in range(grid_length)] for y in range(grid_length)] for x in range(grid_length)]
+    q = queue.Queue()
+    for i in range(1, grid_length-1):
+        for j in range(1, grid_length-1):
+            for d in [0, grid_length-1]:
+                if not lava[i][j][d]:
+                    q.put((i,j,d))
+                if not lava[i][d][j]:
+                    q.put((i,d,j))
+                if not lava[d][i][j]:
+                    q.put((d,i,j))
+    while not q.empty():
+        next = q.get()
+        c = Cube(next[0],next[1],next[2])
+        if not surface[c.x][c.y][c.z]:
+            surface[c.x][c.y][c.z] = True
+            for adjacent_cube in c.get_adjacent_positions():
+                x,y,z = adjacent_cube
+                if any((i not in range(0, grid_length)) for i in [x,y,z]):
+                    continue
+                if not surface[x][y][z] and not lava[x][y][z]:
+                    q.put((x,y,z))
+    return surface
 
 class Cube:
     def __init__(self, x, y, z):
         self.x = int(x)
         self.y = int(y)
         self.z = int(z)
-    def max(self):
-        return max([self.x, self.y, self.z])
-        
+    def get_adjacent_positions(self):
+        x,y,z = self.x, self.y, self.z
+        return [(x+1,y,z), (x,y+1,z), (x,y,z+1),
+                (x-1,y,z), (x,y-1,z), (x,y,z-1)]
+
+assert run(test=True) == (64,58)
 run()
