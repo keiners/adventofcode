@@ -1,4 +1,5 @@
-import re, math
+import re, math, itertools
+import numpy as np
 def run(test=False):
     fileName = "input.txt" if not test else "test_input.txt"
     f = open(f"2021/day19/{fileName}", "r")
@@ -26,90 +27,78 @@ def part1(lines):
     foo1 = scanner_count
     foo2 = 12*(len(scanners)-1)
     print(f"answer: {foo1-foo2}")
-    
-    #print(beacon_map)
-    #print(scanners[0])
-    #print(beacons_from_base)
-    #all_beacons = [(x,y,z) for x,y,z in scanners[0]]
-    length_map = []
-    sc = {k:set() for k in scanners}
-    common_beacons = 0
-    #unique_scanners = {k:v for k,v in scanners.items()}
-    for scanner1 in scanners:
-        for scanner2 in scanners:
-            if scanner1 >= scanner2: continue
-            #print(f"Compare {scanner1}-{scanner2}")
-            found_common_beacons = False
-            for i,beacon1 in enumerate(scanners[scanner1]):
-                #if found_common_beacons:
-                    #break
-                for j,beacon2 in enumerate(scanners[scanner2]):
-                    map1 = [distance_3d(beacon1, (x,y,z)) for x,y,z in scanners[scanner1]]
-                    map2 = [distance_3d(beacon2, (x,y,z)) for x,y,z in scanners[scanner2]]
-                    common = common_member(map1, map2)
-                    if len(common) > 10:
-                        #print(len(common))
-                        #print(f"SAME BEACONS: {beacon1} == {beacon2}")
-                        #common_beacons += len(common)
-                        found_common_beacons = True
-                        
-                        
-                        common_beacons += 1
-                        #sc[scanner1].add(beacon1)
-                        sc[scanner2].add(beacon2)
-                        
-                        break
-                        length_check = False
-                        for c in common:
-                            if not length_check and c != (0):
-                                length_check = c
-                                break
-                        for b in scanners[scanner1]:
-                            if distance_3d(b, beacon1) == length_check:
-                                beacon3 = b
-                                break
-                        for b in scanners[scanner2]:
-                            if distance_3d(b, beacon2) == length_check:
-                                beacon4 = b
-                                break
-                        #print(f"SAME BEACON2: {beacon3} {beacon4}")
-                        
-                        x1,y1,z1 = beacon1
-                        x2,y2,z2 = beacon2
-                        x3,y3,z3 = beacon3
-                        x4,y4,z4 = beacon4
-                        dx = 1 if x3-x1 > x4-x2 else -1
-                        dy = 1 if y3-y1 > y4-y2 else -1
-                        dz = 1 if z3-z1 > z4-z2 else -1
-                        #print((dx,dy,dz))
-                        scanner_conv[str(scanner1)+str(scanner2)] = (dx,dy,dz)
-                        
-                        scanner_spot = (x1+dx*x2,y1+dy*y2,z1+dz*z2)
-                        #print(scanner_spot)
-                        combined_map = []
-                        m1 = [x-x1,y-y2]
-                        for m in map1:
-                            length_map.append(m)
-                        for m in map2:
-                            length_map.append(m)
-                        #print(len(common))
-                        unique_beacons = len(map1)+len(map2)-(2 * len(common))
-                        #print(f"Uniq: {unique_beacons}")
-                        common_beacons += len(common)
-                        found_common_beacons = True
-                        break
-    #print(len(set(length_map)))
-    foo = 0
-    for k,v in sc.items():
-        print(f"k: {len(v)}")
-        bar = len(scanners[k])-len(sc[k])
-        foo += bar
-    #print("test:")
-    print(foo)
-    #print(len(set(sc[0])))
-    print(sum([len(v) for v in scanners.values()]) - common_beacons)
-    return sum([len(v) for v in scanners.values()]) - common_beacons
-    
+        
+    beacons = {k:set() for k in scanners}
+    for k,v in scanners.items():
+        for b in v:
+            beacons[k].add(b)
+    while True:
+        stop_run = True
+        for b in beacons:
+            if b==0:continue
+            elif len(beacons[b]) > 0:
+                stop_run = False
+                break
+        #for k,v in beacons.items():
+            #print(f"L {k}: {len(v)}")
+        if stop_run:
+            break
+        new_beacons = {k:set() for k in beacons}
+        for scanner1 in [k for k in beacons.keys()]:
+            for scanner2 in [k for k in beacons.keys()]:
+                if scanner1 >= scanner2: continue
+                matched_one = False
+                matched_two = False
+                matches = []
+                #print(f"Compare {scanner1}-{scanner2}")
+                for beacon1 in [b for b in beacons[scanner1]]:
+                    if matched_two: break
+                    for beacon2 in [b for b in beacons[scanner2]]:
+                        map1 = [distance_3d(beacon1, (x,y,z)) for x,y,z in beacons[scanner1]]
+                        map2 = [distance_3d(beacon2, (x,y,z)) for x,y,z in beacons[scanner2]]
+                        common = common_member(map1, map2)
+                        if len(common) > 10:
+                            if not matched_one:
+                                matches = []
+                                matches.append(beacon1)
+                                matches.append(beacon2)
+                                matched_one = True
+                                continue
+                            else:
+                                matches.append(beacon1)
+                                matches.append(beacon2)
+                                matched_two = True
+                                #print(f"SAME BEACONS: {matches[0]} == {matches[1]}")
+                                #print(f"SAME BEACONS: {matches[2]} == {matches[3]}")
+                                permutations = list(itertools.permutations([0,1,2]))
+                                for perm in permutations:
+                                    px,py,pz = perm
+                                    if abs(matches[0][0] - matches[2][0]) == abs(matches[1][px] - matches[3][px]):
+                                        if abs(matches[0][1] - matches[2][1]) == abs(matches[1][py] - matches[3][py]):
+                                            assert abs(matches[0][2] - matches[2][2]) == abs(matches[1][pz] - matches[3][pz])
+                                            break
+                                dx,dy,dz = -1,-1,-1
+                                if (matches[0][0] < matches[2][0]) == (matches[1][px] < matches[3][px]):
+                                    dx = 1
+                                if (matches[0][1] < matches[2][1]) == (matches[1][py] < matches[3][py]):
+                                    dy = 1
+                                if (matches[0][2] < matches[2][2]) == (matches[1][pz] < matches[3][pz]):
+                                    dz = 1
+                                scanner_x = matches[0][0] - dx * matches[1][px]
+                                scanner_y = matches[0][1] - dy * matches[1][py]
+                                scanner_z = matches[0][2] - dz * matches[1][pz]
+                                
+                                for beacon in beacons[scanner1]:
+                                    new_beacons[scanner1].add(beacon)
+                                for beacon in beacons[scanner2]:
+                                    x0,y0,z0 = (beacon[px],beacon[py],beacon[pz])
+                                    x1 = dx * x0 + scanner_x
+                                    y1 = dy * y0 + scanner_y
+                                    z1 = dz * z0 + scanner_z
+                                    new_beacons[scanner1].add((x1,y1,z1))
+        beacons = new_beacons
+    return len(beacons[0])
+
 
 def distance_3d(p1, p2):
     x1, y1, z1 = p1
