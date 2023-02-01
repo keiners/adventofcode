@@ -4,56 +4,56 @@ def run(test=False):
     f = open(f"2020/day17/{fileName}", "r")
     lines = [line.replace("\n", "") for line in f.readlines()]
     
-    a1 = part1(lines)
-    a2 = part2(lines)
-    print((a1,a2))
+    a1 = run_cycles(lines, four_dimensions=False)
+    a2 = run_cycles(lines, four_dimensions=True)
     return (a1, a2)
 
-def part1(lines):
-    map = {}
-    for x,row in enumerate(lines):
-        for y,char in enumerate(row):
-            cube = Cube(x,y,0)
-            state = True if char == "#" else False
-            map[cube] = state
-    print("IN MAP")
-    for m in map:
-        if map[m]: print(m.print())
-    for i in range(1):
-        for m in map:
-            count = 0
-            nodes = m.n()
-            for n in nodes:
-                if n == Cube(1,2,0):
-                    print("Match")
-                print(n.print())
-                if n in map and map[n]:
-                    print()
-                    count += 1
-            #print((m.__str__(), count))
-    return 0
+def run_cycles(lines, four_dimensions):
+    active_cubes = {}
+    for y,row in enumerate(lines):
+        for x,char in enumerate(row):
+            if char == "#":
+                if four_dimensions:
+                    active_cubes[(x,y,0,0)] = True
+                else:
+                    active_cubes[(x,y,0)] = True
+    for cycle in range(6):
+        inactive_cubes_to_check = set()
+        new_active_cubes = {}
+        for cube in active_cubes:
+            adj_cubes = get_adjacent_cubes(cube)
+            count = len([n for n in adj_cubes if n in active_cubes])
+            inactive_cubes_to_check.update([n for n in adj_cubes if n not in active_cubes])
+            if count == 3 or count == 2:
+                new_active_cubes[cube] = True
+        for cube in inactive_cubes_to_check:
+            adj_cubes = get_adjacent_cubes(cube)
+            count = len([n for n in adj_cubes if n in active_cubes])
+            if count == 3:
+                new_active_cubes[cube] = True
+        active_cubes = new_active_cubes
+        print(f"{len(active_cubes)} active cubes after round {cycle+1}")
+    return len(active_cubes)
 
-def part2(lines):
-    return 0
-
-class Cube:
-    def __init__(self, x, y, z):
-        self.x = x
-        self.y = y
-        self.z = z
-    def n(self):
-        a,b,c = self.x,self.y,self.z
+def get_adjacent_cubes(coord):
+    if len(coord) == 3:
+        x,y,z = coord
         n = []
         permutations = itertools.product([-1,0,1], repeat=3)
         for p in permutations:
             if p == (0,0,0): continue
-            n.append([a+p[0], b+p[1], c+p[2]])
-        return [Cube(i[0], i[1], i[2]) for i in n]
-    def print(self):
-        return f"{self.x} {self.y} {self.z}"
+            n.append([x+p[0], y+p[1], z+p[2]])
+        return [(i[0],i[1],i[2]) for i in n]
+    elif len(coord) == 4:
+        x,y,z,w = coord
+        n = []
+        permutations = itertools.product([-1,0,1], repeat=4)
+        for p in permutations:
+            if p == (0,0,0,0): continue
+            n.append([x+p[0], y+p[1], z+p[2], w+p[3]])
+        return [(i[0],i[1],i[2],i[3]) for i in n]
 
-
-assert run(True) == (0, 0), 'failed test input'
+assert run(True) == (112, 848), 'failed test input'
 
 a1,a2 = run()
 print(f"Part 1 answer: {a1}")
