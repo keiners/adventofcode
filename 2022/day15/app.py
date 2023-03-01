@@ -1,103 +1,76 @@
 import re
 
 def run():
-    fileName = "day15/input.txt"
+    fileName = "2022/day15/input.txt"
     f = open(fileName, "r")
     lines = [line.replace("\n", "") for line in f.readlines()]
-    sensors = []
+    sensors = {}
     beacons = []
     for line in lines:
-        x,y,x2,y2 = [int(i) for i in re.findall(r'-?\d+', line)]
-        distance = dist(x,y,x2,y2)
-        sensor = Sensor(x,y,distance)
-        sensors.append(sensor)
-        beacons.append((x2,y2))
+        sx,sy,bx,by = [int(i) for i in re.findall(r'-?\d+', line)]
+        distance = manhattan_distance(sx,sy,bx,by)
+        sensors[sy + sx*1j] = distance
+        beacons.append(by + bx*1j)
     
-    #simPart1(sensors, beacons)
-    simPart2(sensors, beacons)
-    #test(sensors, beacons)
+    a1 = part1(sensors, beacons, 2000000)
+    print(f"Answer 1: {a1}")
+    a2 = part2(sensors, 4000000)
+    print(f"Answer s: {a2}")
 
-def simPart1(sensors, beacons):
-    maxDist = max([s.distance for s in sensors])
-    minX = min([s.x for s in sensors])
-    maxX = max([s.x for s in sensors])
-    xRange = (minX - maxDist, maxX + maxDist)
-    invalidPositions = 0
-    for i in range(xRange[0], xRange[1]+1):
-        x,y = (i,2000000)
-        if (x,y) in beacons:
-            continue
-        for sensor in sensors:
-            distToSensor = dist(x,y,sensor.x,sensor.y)
-            if distToSensor <= sensor.distance:
-                invalidPositions += 1
+def part1(sensors, beacons, target_row):
+    invalid_ranges = get_invalid_ranges(sensors, target_row)
+    answer = int(sum([len(list(r)) for r in reduce_ranges(invalid_ranges)]))
+    answer = answer - len([b for b in beacons if int(b.real) == target_row]) # remove beacons on target row
+    return answer
+
+def part2(sensors, max_area):
+    valid_area = range(0,max_area+1)
+    for y in valid_area:
+        go_next = False
+        ranges = get_invalid_ranges(sensors, y)
+        for r in ranges:
+            if valid_area.start in r and valid_area.stop-1 in r:
+                go_next = True
                 break
-    print("Part 1: "+str(invalidPositions))
-    
- 
-def _simPart2(sensors, beacons): # too slow
-    for x in range(0,4000000+1):
-        for y in range(0,4000000+1):
-            if (x,y) in beacons:
-                continue
-            else: 
-                validPos = True
-                for sensor in sensors:
-                    distToSensor = dist(x,y,sensor.x,sensor.y)
-                    if distToSensor <= sensor.distance:
-                        validPos = False
-                        break
-                if validPos:
-                    print((x,y))
-                    return (x*4000000+y)
-                
-def simPart2(sensors, beacons): # too slow
-    coordinateSets = []
-    for sensor in sensors:
-        possibleCoordinates = find_coordinates_by_distance(sensor.x, sensor.y, sensor.distance+1)
-        possibleCoordinates = filterCoordinates(possibleCoordinates, 0, 4000000)
-        coordinateSets.append(possibleCoordinates)
-    common_ints = findCommon(coordinateSets)
-    print(common_ints)
-    
-def findCommon(lists):
-    # create an empty set to store the integers that are found in more than one list
-    common_ints = set()
+        if not go_next:
+            for r in ranges:
+                if r.stop <= valid_area.start:
+                    continue
+                else:
+                    beacon_x = r.stop
+                    break
+            print(f"Distress beacon at {(beacon_x,y)}")
+            return int(beacon_x * 4000000 + y)
 
-    # loop through each list
-    for i in range(len(lists)):
-        # loop through each integer in the current list
-        for j in range(len(lists[i])):
-            # check if the current integer is in any of the other lists
-            for k in range(i+1, len(lists)):
-                if lists[i][j] in lists[k]:
-                    # add the integer to the set of common integers
-                    common_ints.add(lists[i][j])
+def get_invalid_ranges(sensors, target_row):
+    invalid_ranges = []
+    for sensor,dist in sensors.items():
+        if sensor.real - dist <= target_row <= sensor.real + dist: # if sensor reading reaches target row
+            invalid_row_radius = dist - abs(target_row - sensor.real)
+            start = int(sensor.imag - invalid_row_radius)
+            stop = int(sensor.imag + invalid_row_radius)
+            invalid_ranges.append(range(start, stop+1))
+    return reduce_ranges(invalid_ranges)
 
-    # print the set of common integers
-    #print(common_ints)
-    return common_ints
+def is_in_range(ranges, x):
+    for r in ranges:
+        if x in r:
+            return True
+    return False
 
-def dist(x1, y1, x2, y2):
+def reduce_ranges(ranges):
+    sorted_ranges = sorted(ranges, key=lambda x: x.start) # sort ranges by starting value
+    merged_ranges = [sorted_ranges[0]] # initialize list of merged ranges with first range
+    for r in sorted_ranges[1:]:
+        if r.start <= merged_ranges[-1].stop: # if the next range overlaps with the last merged range
+            merged_ranges[-1] = range(merged_ranges[-1].start, max(merged_ranges[-1].stop, r.stop)) # merge the two ranges
+        else:
+            merged_ranges.append(r) # add the next range to the list of merged ranges
+    return merged_ranges
+
+
+def manhattan_distance(x1, y1, x2, y2):
     return abs(x1 - x2) + abs(y1 - y2)
-
-def filterCoordinates(coordinates, min, max):
-    return [c for c in coordinates if min <= c[0] <= max and min <= c[1] <= max]
-
-class Sensor:
-  def __init__(self, x, y, distance):
-    self.x = x
-    self.y = y
-    self.distance = distance
-
-def find_coordinates_by_distance(x, y, d):
-    foo = set()
-    for i in range(d+1):
-        foo.add((x-i, y-(d-i)))
-        foo.add((x-i, y+(d-i)))
-        foo.add((x+i, y-(d-i)))
-        foo.add((x+i, y+(d-i)))
-    return foo
         
 run()
 # Sensor at x=2, y=18: closest beacon is at x=-2, y=15
